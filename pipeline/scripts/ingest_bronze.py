@@ -1,19 +1,21 @@
 """
 Bronze Layer - Indicadores Economicos do Brasil
-Fonte: API SGS (Banco Central do Brasil)
-Series: SELIC, IPCA, Cambio, PIB, IGP-M, INPC, Reservas, Divida, Balanca, Credito
+Fonte: API SGS do Banco Central do Brasil
 """
-import os, json, requests, psycopg2
+import os, json, sys, traceback
+import requests, psycopg2
 from loguru import logger
 
-DB = dict(
-    host=os.environ["DB_HOST"],
-    port=os.environ.get("DB_PORT","5432"),
-    dbname=os.environ.get("DB_NAME","postgres"),
-    user=os.environ.get("DB_USER","postgres"),
-    password=os.environ["DB_PASSWORD"],
-    sslmode="require"
-)
+DB_HOST = os.environ.get("DB_HOST", "")
+DB_PASS = os.environ.get("DB_PASSWORD", "")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "postgres")
+DB_USER = os.environ.get("DB_USER", "postgres")
+
+logger.info(f"DB_HOST={DB_HOST!r} len(DB_PASSWORD)={len(DB_PASS)}")
+
+DB = dict(host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER,
+          password=DB_PASS, sslmode="require", connect_timeout=20)
 
 SERIES = {
     "selic_diaria":   11,
@@ -42,15 +44,22 @@ def fetch(code, name):
         return []
 
 def run():
-    logger.info("=== BRONZE: BCB/SGS ===")
-    conn = psycopg2.connect(**DB)
+    logger.info("=== BRONZE: Conectando ao Supabase ===")
+    try:
+        conn = psycopg2.connect(**DB)
+        logger.info("Conexao OK")
+    except Exception as e:
+        logger.error(f"FALHA NA CONEXAO: {e}")
+        traceback.print_exc()
+        sys.exit(1)
+
     cur = conn.cursor()
     total = 0
     for name, code in SERIES.items():
         records = fetch(code, name)
         cur.execute("DELETE FROM bronze.indicators_raw WHERE series_name=%s", (name,))
         rows = [(name, code, r["data"], r["valor"], json.dumps(r))
-                for r in records if r.get("data") and r.get("valor") not in ("",None)]
+                for r in records if r.get("data") and r.get("valor") not in ("", None)]
         if rows:
             cur.executemany("""
                 INSERT INTO bronze.indicators_raw
@@ -58,11 +67,17 @@ def run():
                 VALUES(%s,%s,%s,%s,%s,NOW())
             """, rows)
             total += len(rows)
-        conn.commit()
+            conn.commit()
+        logger.info(f"  {name}: {len(rows)} inseridos")
+
     cur.execute("INSERT INTO bronze.pipeline_log(layer,status,records_loaded,executed_at) VALUES('bronze','success',%s,NOW())", (total,))
-    conn.commit()
-    conn.close()
-    logger.success(f"Bronze: {total} registros")
+    conn.commit(); conn.close()
+    logger.success(f"Bronze: {total} registros totais")
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as e:
+        logger.error(f"ERRO: {e}")
+        traceback.print_exc()
+        sys.exit(1)
