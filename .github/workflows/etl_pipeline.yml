@@ -24,18 +24,26 @@ jobs:
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: |
-          python pipeline/scripts/ingest_bronze.py > /tmp/bronze.txt 2>&1
-          cat /tmp/bronze.txt
-          exit $(python pipeline/scripts/ingest_bronze.py 2>&1 | tail -1 | grep -c 'Error' || true)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python pipeline/scripts/ingest_bronze.py
 
-      - name: Log Bronze
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bronze-log
-          path: /tmp/bronze.txt
-          retention-days: 1
+      - name: SILVER
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/transform_silver.py
+
+      - name: GOLD
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/aggregate_gold.py
+
+      - name: Testes
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/run_tests.py
 
       - name: Resumo
         if: always()
