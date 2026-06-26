@@ -9,8 +9,6 @@ jobs:
   etl:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -19,15 +17,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias
+      - name: Deps
         run: pip install requests psycopg2-binary loguru
 
       - name: BRONZE
-        id: bronze
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: python pipeline/scripts/ingest_bronze.py 2>&1 | tee /tmp/out.txt; echo "EXIT=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT; exit ${PIPESTATUS[0]}
+        run: python pipeline/scripts/ingest_bronze.py
 
       - name: SILVER
         env:
@@ -47,23 +44,6 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: python pipeline/scripts/run_tests.py
 
-      - name: Salvar log
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LOG=$(cat /tmp/out.txt 2>/dev/null || echo 'no output')
-          python3 -c "
-import urllib.request, json, os
-log = open('/tmp/out.txt').read() if os.path.exists('/tmp/out.txt') else 'no log'
-payload = json.dumps({'description':'ETL Error Log','public':True,'files':{'error.txt':{'content':log}}}).encode()
-req = urllib.request.Request('https://api.github.com/gists',data=payload,method='POST',
-  headers={'Authorization':'token $GH_TOKEN','Content-Type':'application/json'})
-with urllib.request.urlopen(req) as r:
-    d=json.loads(r.read())
-    print('Gist:', d.get('html_url','?'))
-"
-
       - name: Resumo
         if: always()
-        run: echo "Pipeline finalizado $(date -u '+%Y-%m-%d %H:%M UTC')"
+        run: echo done
