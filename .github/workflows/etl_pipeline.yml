@@ -1,0 +1,63 @@
+name: ETL Indicadores Brasil
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 06:00 Brasilia (UTC-3)
+  workflow_dispatch:
+
+jobs:
+  etl:
+    name: Bronze → Silver → Gold
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: pip install requests psycopg2-binary loguru
+
+      - name: 🟤 BRONZE — Ingerir BCB/SGS
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: "5432"
+          DB_NAME: postgres
+          DB_USER: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/ingest_bronze.py
+
+      - name: ⚪ SILVER — Limpar e tipar
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: "5432"
+          DB_NAME: postgres
+          DB_USER: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/transform_silver.py
+
+      - name: 🟡 GOLD — Agregar
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: "5432"
+          DB_NAME: postgres
+          DB_USER: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/aggregate_gold.py
+
+      - name: ✅ Testes de qualidade
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: "5432"
+          DB_NAME: postgres
+          DB_USER: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/run_tests.py
+
+      - name: 📢 Resumo
+        if: always()
+        run: echo "Pipeline finalizado em $(date -u '+%Y-%m-%d %H:%M UTC')"
