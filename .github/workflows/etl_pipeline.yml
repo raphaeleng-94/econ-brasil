@@ -20,11 +20,29 @@ jobs:
       - name: Deps
         run: pip install requests psycopg2-binary loguru
 
+      - name: DIAG
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          python3 -c "
+import psycopg2, os, sys
+h=os.environ.get('DB_HOST','')
+p=os.environ.get('DB_PASSWORD','')
+print(f'HOST={h!r} PASSLEN={len(p)}')
+try:
+  conn=psycopg2.connect(host=h,port='5432',dbname='postgres',user='postgres',password=p,sslmode='require',connect_timeout=15)
+  conn.cursor().execute('SELECT 1'); conn.close()
+  print('DB OK')
+except Exception as e:
+  print(f'::error::DB FAIL: {e}')
+  sys.exit(1)
+"
+
       - name: BRONZE
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python pipeline/scripts/ingest_bronze.py
 
       - name: SILVER
