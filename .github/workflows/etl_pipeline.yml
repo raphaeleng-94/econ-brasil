@@ -20,7 +20,7 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: pip install requests psycopg2-binary
+        run: pip install requests psycopg2-binary python-dateutil
 
       - name: Diagnostico
         env:
