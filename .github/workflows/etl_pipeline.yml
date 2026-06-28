@@ -22,6 +22,12 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests psycopg2-binary
 
+      - name: Diagnostico
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: python pipeline/scripts/diag.py || true
+
       - name: Bronze
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
@@ -48,4 +54,4 @@ jobs:
 
       - name: Resumo
         if: always()
-        run: echo "Pipeline finalizado $(date -u '+%Y-%m-%d %H:%M UTC')"
+        run: echo done
