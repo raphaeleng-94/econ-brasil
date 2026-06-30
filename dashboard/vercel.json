@@ -1,1 +1,12 @@
-{"buildCommand":"npm run build","outputDirectory":".next"}
+{
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://fshsfanxmsdeomujolqj.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzaHNmYW54bXNkZW9tdWpvbHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NTIyODEsImV4cCI6MjA5ODMyODI4MX0.Eyo45pZYS-1aBgSpjic8hTcWtd2Yehd89KFoxJj4uDU"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://fshsfanxmsdeomujolqj.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzaHNmYW54bXNkZW9tdWpvbHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NTIyODEsImV4cCI6MjA5ODMyODI4MX0.Eyo45pZYS-1aBgSpjic8hTcWtd2Yehd89KFoxJj4uDU"
+    }
+  }
+}

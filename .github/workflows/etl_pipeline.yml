@@ -16,7 +16,7 @@ jobs:
           echo "Invocando pipeline..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "x-pipeline-secret: ${{ secrets.PIPELINE_SECRET }}" \
-            "https://ftbtqqwahzpzwqizigcd.supabase.co/functions/v1/run-pipeline")
+            "https://fshsfanxmsdeomujolqj.supabase.co/functions/v1/run-pipeline")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
