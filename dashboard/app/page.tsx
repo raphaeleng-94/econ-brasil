@@ -3,11 +3,13 @@ import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fetchLatest, fetchMonthly, fetchAnnual, Latest, Monthly, Annual } from '@/lib/supabase'
-import { META, ORDER, fmt, fmtDate } from '@/lib/meta'
+import { META, ORDER, fmt, fmtDate, type Category } from '@/lib/meta'
+import NavBar from '@/components/ui/NavBar'
+import CategoryFilter from '@/components/ui/CategoryFilter'
 
 const Ticker       = dynamic(() => import('@/components/ui/Ticker'),           { ssr: false })
-const HistoryChart = dynamic(() => import('@/components/charts/HistoryChart'), { ssr: false })
-const AnnualChart  = dynamic(() => import('@/components/charts/AnnualChart'),  { ssr: false })
+const HistoryChart  = dynamic(() => import('@/components/charts/HistoryChart'), { ssr: false })
+const AnnualChart   = dynamic(() => import('@/components/charts/AnnualChart'),  { ssr: false })
 
 export default function Home() {
   const [latest,  setLatest]  = useState<Latest[]>([])
@@ -16,6 +18,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState('selic_diaria')
   const [view, setView] = useState<'mensal'|'anual'>('mensal')
+  const [category, setCategory] = useState<Category | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     Promise.all([fetchLatest(), fetchMonthly(), fetchAnnual()])
@@ -32,54 +36,60 @@ export default function Home() {
   const allMin     = annualFor.length ? Math.min(...annualFor.map(d => d.min_value ?? Infinity)) : null
   const allMax     = annualFor.length ? Math.max(...annualFor.map(d => d.max_value ?? -Infinity)) : null
 
-  return (
-    <div className="relative z-10 flex flex-col h-screen overflow-hidden">
+  const filteredOrder = useMemo(() => {
+    return ORDER.filter(name => {
+      const m = META[name]
+      if (category && m.category !== category) return false
+      if (search && !m.label.toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    })
+  }, [category, search])
 
-      {/* ── HEADER ── */}
-      <header className="shrink-0 border-b border-white/6" style={{ background:'rgba(4,13,24,0.98)' }}>
+  return (
+    <div className="relative z-10 flex flex-col h-screen overflow-hidden" style={{ background: 'var(--bg-0)' }}>
+
+      {/* HEADER */}
+      <header className="shrink-0" style={{ background: 'var(--bg-1)' }}>
         <Ticker items={latest} />
-        <div className="flex items-center gap-3 px-5 py-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-               style={{ background:'linear-gradient(135deg,#00284480,#00d4ff20)', border:'1px solid #00d4ff25' }}>
-            🇧🇷
-          </div>
-          <div>
-            <h1 className="text-[14px] font-bold text-white leading-none">Painel Econômico Brasil</h1>
-            <p className="text-[9px] text-white/20 tracking-widest mt-0.5">MEDALLION ETL · BCB/SGS · GITHUB ACTIONS · SUPABASE · VERCEL</p>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            {[['BRONZE','#cd7f32'],['SILVER','#c0c0c0'],['GOLD','#ffcc00']].map(([l,c])=>(
-              <span key={l} className="text-[9px] font-mono font-bold px-2 py-0.5 rounded"
-                    style={{color:c,background:`${c}12`,border:`1px solid ${c}30`}}>{l}</span>
-            ))}
-            <span className={`text-[9px] font-mono ml-2 ${loading?'text-white/20 animate-pulse':'text-green-400'}`}>
-              {loading ? '● CARREGANDO' : '● AO VIVO'}
-            </span>
-          </div>
+        <NavBar live={!loading} active="painel" />
+
+        {/* Filters row */}
+        <div className="flex items-center gap-3 px-5 py-2.5 flex-wrap" style={{ borderBottom: '1px solid var(--border)' }}>
+          <CategoryFilter active={category} onChange={setCategory} />
+          <input
+            type="text"
+            placeholder="🔍 Buscar indicador..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="px-3 py-1.5 rounded-full text-[11px] outline-none ml-auto w-48"
+            style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', color: 'var(--text-0)' }}
+          />
         </div>
       </header>
 
-      {/* ── BODY ── */}
+      {/* BODY */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* SIDEBAR */}
-        <aside className="shrink-0 w-48 border-r border-white/6 overflow-y-auto"
-               style={{ background:'rgba(3,10,20,0.8)' }}>
+        <aside className="shrink-0 w-48 overflow-y-auto" style={{ background: 'var(--bg-1)', borderRight: '1px solid var(--border)' }}>
           <div className="p-1.5 space-y-0.5">
-            {ORDER.map(name => {
+            {filteredOrder.length === 0 && (
+              <p className="text-[10px] text-center py-4" style={{ color: 'var(--text-3)' }}>Nenhum resultado</p>
+            )}
+            {filteredOrder.map(name => {
               const m = META[name]; const it = latestMap[name]; const on = selected === name
               return (
                 <button key={name} onClick={() => setSelected(name)}
                   className="w-full text-left px-2.5 py-2 rounded-lg transition-all"
-                  style={{ background:on?`${m.color}18`:'transparent', border:`1px solid ${on?m.color+'40':'transparent'}` }}>
+                  style={{ background: on ? `${m.color}1c` : 'transparent', border: `1px solid ${on ? m.color+'55':'transparent'}` }}>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="text-[11px]">{m.icon}</span>
-                    <span className="text-[10px] font-bold" style={{ color:on?m.color:'#5a7a9a' }}>{m.label}</span>
+                    <span className="text-[10px] font-bold" style={{ color: on ? m.color : 'var(--text-2)' }}>{m.label}</span>
                   </div>
                   {it && (
                     <div className="pl-4">
-                      <div className="text-[12px] font-mono font-bold text-white/85">{fmt(it.value, m.fmt)}</div>
-                      <div className="text-[8px] text-white/20 font-mono">{fmtDate(it.reference_date)}</div>
+                      <div className="text-[12px] font-mono font-bold" style={{ color: 'var(--text-0)' }}>{fmt(it.value, m.fmt)}</div>
+                      <div className="text-[8px] font-mono" style={{ color: 'var(--text-3)' }}>{fmtDate(it.reference_date)}</div>
                     </div>
                   )}
                 </button>
@@ -98,40 +108,38 @@ export default function Home() {
               <div className="grid grid-cols-4 gap-3">
                 {[
                   {label:'Último Valor',  val:fmt(item?.value, selMeta?.fmt),  sub:fmtDate(item?.reference_date), color:selMeta?.color},
-                  {label:'Média Anual',   val:fmt(lastAnn?.avg_value, selMeta?.fmt), sub:`${lastAnn?.year??'—'}`, color:selMeta?.color+'99'},
-                  {label:'Mín Histórico', val:fmt(allMin, selMeta?.fmt), sub:'desde 2000', color:'#39ff14aa'},
-                  {label:'Máx Histórico', val:fmt(allMax, selMeta?.fmt), sub:'desde 2000', color:'#ff4444aa'},
+                  {label:'Média Anual',   val:fmt(lastAnn?.avg_value, selMeta?.fmt), sub:`${lastAnn?.year??'—'}`, color:selMeta?.color},
+                  {label:'Mín Histórico', val:fmt(allMin, selMeta?.fmt), sub:'desde 2000', color:'#16a34a'},
+                  {label:'Máx Histórico', val:fmt(allMax, selMeta?.fmt), sub:'desde 2000', color:'#dc2626'},
                 ].map((c,i)=>(
-                  <div key={i} className="rounded-xl p-4 border border-white/6" style={{background:'rgba(255,255,255,0.02)'}}>
-                    <div className="text-[9px] font-semibold uppercase tracking-wider text-white/25 mb-1">{c.label}</div>
+                  <div key={i} className="rounded-xl p-4" style={{background:'var(--bg-1)', border:'1px solid var(--border)', boxShadow:'var(--shadow)'}}>
+                    <div className="text-[9px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-2)' }}>{c.label}</div>
                     <div className="text-[22px] font-bold font-mono leading-none" style={{color:c.color}}>{c.val}</div>
-                    <div className="text-[9px] text-white/20 font-mono mt-1">{c.sub}</div>
+                    <div className="text-[9px] font-mono mt-1" style={{ color: 'var(--text-3)' }}>{c.sub}</div>
                   </div>
                 ))}
               </div>
 
               {/* CHART */}
-              <div className="rounded-2xl border border-white/8 overflow-hidden" style={{background:'rgba(7,16,32,0.9)'}}>
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+              <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-1)', border:'1px solid var(--border)', boxShadow:'var(--shadow)'}}>
+                <div className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderBottom: '1px solid var(--border)' }}>
                   <span className="text-[13px]">{selMeta?.icon}</span>
-                  <span className="text-[13px] font-bold text-white">{selMeta?.label}</span>
-                  <span className="text-[9px] text-white/25 font-mono">{selMeta?.unit}</span>
-                  <span className="text-[9px] text-white/20 ml-1">· Arraste o brush para navegar no histórico</span>
-                  <div className="ml-auto flex rounded-lg overflow-hidden border border-white/10">
+                  <span className="text-[13px] font-bold" style={{ color: 'var(--text-0)' }}>{selMeta?.label}</span>
+                  <span className="text-[9px] font-mono" style={{ color: 'var(--text-2)' }}>{selMeta?.unit}</span>
+                  <span className="text-[9px] hidden md:inline" style={{ color: 'var(--text-3)' }}>· {selMeta?.desc}</span>
+                  <div className="ml-auto flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                     {(['mensal','anual'] as const).map(v=>(
                       <button key={v} onClick={()=>setView(v)}
                         className="px-4 py-1.5 text-[10px] font-medium transition-colors"
-                        style={{background:view===v?`${selMeta?.color}25`:'transparent', color:view===v?selMeta?.color:'#4a6a8a'}}>
+                        style={{background:view===v?`${selMeta?.color}25`:'transparent', color:view===v?selMeta?.color:'var(--text-2)'}}>
                         {v[0].toUpperCase()+v.slice(1)}
                       </button>
                     ))}
                   </div>
-                  <span className="text-[8px] font-mono px-2 py-0.5 rounded ml-1"
-                        style={{color:'#ffcc00',background:'#ffcc0010',border:'1px solid #ffcc0025'}}>GOLD</span>
                 </div>
                 <div style={{height:360, padding:'12px 8px 0'}}>
                   {loading
-                    ? <div className="h-full flex items-center justify-center text-white/15 animate-pulse text-sm">Carregando dados...</div>
+                    ? <div className="h-full flex items-center justify-center text-sm animate-pulse" style={{ color: 'var(--text-3)' }}>Carregando dados...</div>
                     : view==='mensal'
                       ? <HistoryChart series={selected} data={monthlyFor} />
                       : <AnnualChart  series={selected} data={annualFor} />
@@ -141,20 +149,20 @@ export default function Home() {
 
               {/* ALL INDICATORS GRID */}
               <div>
-                <p className="text-[9px] uppercase tracking-widest text-white/20 mb-2">Todos os indicadores — última leitura</p>
+                <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-3)' }}>Todos os indicadores — última leitura</p>
                 <div className="grid grid-cols-5 gap-2">
-                  {ORDER.map(name=>{
+                  {filteredOrder.map(name=>{
                     const m=META[name]; const it=latestMap[name]; const on=selected===name
                     return (
                       <button key={name} onClick={()=>setSelected(name)}
-                        className="rounded-xl p-3 text-left border transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        style={{background:on?`${m.color}10`:'rgba(255,255,255,0.02)', borderColor:on?`${m.color}40`:'rgba(255,255,255,0.06)'}}>
+                        className="rounded-xl p-3 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{background:on?`${m.color}14`:'var(--bg-1)', border: `1px solid ${on?m.color+'55':'var(--border)'}`, boxShadow: on ? 'none' : 'var(--shadow)'}}>
                         <div className="flex items-center gap-1 mb-1">
                           <span className="text-[11px]">{m.icon}</span>
                           <span className="text-[9px] font-bold" style={{color:m.color}}>{m.label}</span>
                         </div>
-                        <div className="text-[13px] font-mono font-bold text-white/85">{it?fmt(it.value,m.fmt):'—'}</div>
-                        <div className="text-[8px] text-white/20 font-mono mt-0.5">{it?fmtDate(it.reference_date):''}</div>
+                        <div className="text-[13px] font-mono font-bold" style={{ color: 'var(--text-0)' }}>{it?fmt(it.value,m.fmt):'—'}</div>
+                        <div className="text-[8px] font-mono mt-0.5" style={{ color: 'var(--text-3)' }}>{it?fmtDate(it.reference_date):''}</div>
                       </button>
                     )
                   })}
@@ -162,10 +170,8 @@ export default function Home() {
               </div>
 
               {/* FOOTER */}
-              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/5 text-[9px] text-white/20"
-                   style={{background:'rgba(255,255,255,0.01)'}}>
-                <span>📡 <strong className="text-white/40">Fonte:</strong> API SGS — Banco Central do Brasil (bcb.gov.br) · gratuita · sem autenticação</span>
-                <span className="ml-auto">Bronze → Silver → Gold · GitHub Actions cron 06:00 BRT</span>
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[9px]" style={{background:'var(--bg-1)', border:'1px solid var(--border)', color: 'var(--text-3)'}}>
+                <span>📡 <strong style={{ color: 'var(--text-2)' }}>Fonte:</strong> API SGS — Banco Central do Brasil (bcb.gov.br) · gratuita · sem autenticação</span>
               </div>
 
             </motion.div>

@@ -1,13 +1,18 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/lib/theme'
+
 export const metadata: Metadata = {
-  title: 'Painel Econômico Brasil · Medallion ETL',
-  description: 'Indicadores econômicos do Brasil — BCB/SGS via Bronze→Silver→Gold',
+  title: 'Painel Econômico Brasil',
+  description: 'Indicadores econômicos do Brasil — dados oficiais do Banco Central, atualizados automaticamente',
 }
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="h-full">
-      <body className="h-full">{children}</body>
+    <html lang="pt-BR" className="h-full" suppressHydrationWarning>
+      <body className="h-full" suppressHydrationWarning>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }
