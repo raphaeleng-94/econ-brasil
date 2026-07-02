@@ -2,7 +2,7 @@ export type Category = 'juros_inflacao' | 'cambio_externo' | 'atividade_fiscal'
 
 export const META: Record<string, {
   label: string; unit: string; color: string; icon: string
-  fmt: 'pct'|'brl'|'usd'|'num'; category: Category; desc: string
+  fmt: 'pct'|'brl'|'usd'|'tri'|'num'; category: Category; desc: string
 }> = {
   selic_diaria:   { label: 'SELIC',          unit: '% a.a.',  color: '#0284c7', icon: '📈', fmt: 'pct', category: 'juros_inflacao', desc: 'Taxa básica de juros da economia, definida pelo Copom' },
   ipca_mensal:    { label: 'IPCA',           unit: '% a.m.',  color: '#ea580c', icon: '🔥', fmt: 'pct', category: 'juros_inflacao', desc: 'Inflação oficial usada para a meta do governo' },
@@ -13,7 +13,7 @@ export const META: Record<string, {
   saldo_bc:       { label: 'Bal. Comercial', unit: 'US$ mi',  color: '#2563eb', icon: '⚖️',  fmt: 'usd', category: 'cambio_externo', desc: 'Exportações menos importações' },
   pib_trimestral: { label: 'PIB',            unit: '% trim.', color: '#7c3aed', icon: '📊', fmt: 'pct', category: 'atividade_fiscal', desc: 'Variação trimestral do Produto Interno Bruto' },
   divida_pib:     { label: 'Dívida/PIB',    unit: '%',       color: '#dc2626', icon: '⚠️',  fmt: 'pct', category: 'atividade_fiscal', desc: 'Endividamento do governo geral' },
-  credito_total:  { label: 'Crédito Total', unit: 'R$ bi',   color: '#c026d3', icon: '💳', fmt: 'brl', category: 'atividade_fiscal', desc: 'Volume de crédito no sistema financeiro' },
+  credito_total:  { label: 'Crédito Total', unit: 'R$ tri',  color: '#c026d3', icon: '💳', fmt: 'tri', category: 'atividade_fiscal', desc: 'Volume de crédito no sistema financeiro' },
 }
 
 export const ORDER = [
@@ -31,6 +31,7 @@ export function fmt(v: number | null | undefined, f: string): string {
   if (v == null) return '—'
   if (f === 'pct') return `${(+v).toFixed(2)}%`
   if (f === 'brl') return `R$ ${(+v).toFixed(2)}`
+  if (f === 'tri') return `R$ ${((+v)/1e6).toFixed(2)}tri`
   if (f === 'usd') return `US$ ${((+v)/1000).toFixed(1)}bi`
   return (+v).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 }
